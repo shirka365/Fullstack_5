@@ -1,0 +1,13 @@
+{
+  "name": "react-project-server",
+  "version": "1.0.0",
+  "description": "JSON server for React project",
+  "main": "index.js",
+  "scripts": {
+    "init-db": "node init-db.js",
+    "start": "json-server --watch db.json --port 3001"
+  },
+  "dependencies": {
+    "json-server": "^0.17.4"
+  }
+}
