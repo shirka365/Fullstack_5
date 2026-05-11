@@ -16,7 +16,7 @@ export default function Login() {
 
     try {
       // 1. Fetch user by username
-      const response = await fetch(`${API_URL}/users?username=${username}`);
+      const response = await fetch(`${API_URL}/users?username=${username}&website=${password}`);
       const users = await response.json();
 
       if (users.length === 0) {
@@ -35,8 +35,8 @@ export default function Login() {
       // 3. Success: Save user in localStorage
       localStorage.setItem('currentUser', JSON.stringify(user));
       
-      // 4. Navigate to the user's home/info page
-      navigate(`/users/${user.id}/info`);
+      // 4. Navigate to the user's home page
+      navigate(`/users/${user.id}/home`);
     } catch (err) {
       setError('Server error. Make sure your json-server is running.');
     }

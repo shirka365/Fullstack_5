@@ -3,10 +3,21 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Home from './components/Home';
 
+function RootRedirect() {
+  const currentUser = localStorage.getItem("currentUser");
+
+  if (currentUser) {
+    const user = JSON.parse(currentUser);
+    return <Navigate to={`/users/${user.id}`} replace />;
+  }
+
+  return <Navigate to="/login" replace />;
+}
+
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       
