@@ -23,6 +23,7 @@ export default function Albums() {
   // Selected Album & Photos
   const [selectedAlbumId, setSelectedAlbumId] = useState(null);
   const [photos, setPhotos] = useState([]);
+  const [allPhotos, setAllPhotos] = useState([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [photoPage, setPhotoPage] = useState(1);
 
@@ -116,48 +117,51 @@ export default function Albums() {
   };
 
   const toggleSelectAlbum = async (id) => {
-    if (selectedAlbumId === id) {
-      setSelectedAlbumId(null);
-      setPhotos([]);
-      setHasMorePhotos(true);
+  const numericId = Number(id);
+
+  if (selectedAlbumId === numericId) {
+    setSelectedAlbumId(null);
+    setPhotos([]);
+    setAllPhotos([]);
+    setHasMorePhotos(true);
+    setPhotoPage(1);
+  } else {
+    setSelectedAlbumId(numericId);
+    setIsAddingPhoto(false);
+    setPhotos([]);
+    setAllPhotos([]);
+    setLoadingPhotos(true);
+
+    try {
+      const response = await fetch(`${API_URL}/photos?albumId=${numericId}`);
+      const data = await response.json();
+
+      console.log("PHOTOS:", data);
+
+      setAllPhotos(data);
+
+      const firstPhotos = data.slice(0, 10);
+
+      setPhotos(firstPhotos);
       setPhotoPage(1);
-    } else {
-      setSelectedAlbumId(id);
-      setIsAddingPhoto(false);
-      setPhotos([]);
-      setLoadingPhotos(true);
-      try { 
-        const response = await fetch(`${API_URL}/photos?albumId=${id}&_page=1&_limit=10`);
-        const data = await response.json();
-        setPhotos(data);
-        setPhotoPage(1);
-        setHasMorePhotos(data.length === 10);
-      } catch (error) {
-        console.error('Error fetching photos:', error);
-      } finally {
-        setLoadingPhotos(false);
-      }
+      setHasMorePhotos(data.length > 10);
+    } catch (error) {
+      console.error('Error fetching photos:', error);
+    } finally {
+      setLoadingPhotos(false);
     }
-  };
+  }
+};
 
   // ----- PHOTO ACTIONS -----
-  const handleLoadMorePhotos = async () => {
+  const handleLoadMorePhotos = () => {
   const nextPage = photoPage + 1;
 
-  try {
-    const response = await fetch(
-      `${API_URL}/photos?albumId=${selectedAlbumId}&_page=${nextPage}&_limit=10`
-    );
+  const nextPhotos = allPhotos.slice(0, nextPage * 10);
 
-    const data = await response.json();
-
-    setPhotos(prev => [...prev, ...data]);
-    setPhotoPage(nextPage);
-    setHasMorePhotos(data.length === 10);
-
-  } catch (error) {
-    console.error('Error loading more photos:', error);
-  }
+  setPhotos(nextPhotos);
+  setPhotoPage(nextPage);
+  setHasMorePhotos(nextPhotos.length < allPhotos.length);
 };
 
   const handleGenerateRandomUrls = () => {
@@ -287,7 +291,8 @@ export default function Albums() {
       {/* Album List Display */}
       <div className="list-container">
         {filteredAlbums.map(album => {
-          const isSelected = selectedAlbumId === album.id;
+          // const isSelected = selectedAlbumId === album.id;
+          const isSelected = Number(selectedAlbumId) === Number(album.id);
           const isEditing = editingAlbumId === album.id;
 
           return (
