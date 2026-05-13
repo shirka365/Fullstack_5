@@ -5,6 +5,7 @@ import { Plus, Trash2, Edit2, Save, X, Image as ImageIcon, ChevronDown, ChevronR
 const API_URL = 'http://localhost:3001';
 
 export default function Albums() {
+  
   const { userId } = useParams();
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +24,7 @@ export default function Albums() {
   const [selectedAlbumId, setSelectedAlbumId] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
-  const [visiblePhotoCount, setVisiblePhotoCount] = useState(10); // PAGINATION STATE
+  const [photoPage, setPhotoPage] = useState(1);
 
   // Photo actions
   const [isAddingPhoto, setIsAddingPhoto] = useState(false);
@@ -32,6 +33,7 @@ export default function Albums() {
   const [newPhotoThumbnail, setNewPhotoThumbnail] = useState('');
   const [editingPhotoId, setEditingPhotoId] = useState(null);
   const [editPhotoTitle, setEditPhotoTitle] = useState('');
+  const [hasMorePhotos, setHasMorePhotos] = useState(true);
 
   useEffect(() => {
     fetchAlbums();
@@ -39,7 +41,7 @@ export default function Albums() {
 
   const fetchAlbums = async () => {
     try {
-      const response = await fetch(`${API_URL}/users/${userId}/albums`);
+      const response = await fetch(`${API_URL}/albums?userId=${userId}`);
       const data = await response.json();
       setAlbums(data);
     } catch (error) {
@@ -71,7 +73,20 @@ export default function Albums() {
 
   const handleDeleteAlbum = async (id) => {
     try {
+      const photosRes = await fetch(`${API_URL}/photos?albumId=${id}`);
+      const albumPhotos = await photosRes.json();
+
+      await Promise.all(
+        albumPhotos.map(photo =>
+          fetch(`${API_URL}/photos/${photo.id}`, {
+            method: 'DELETE'
+          })
+        )
+      );
+
+      
       await fetch(`${API_URL}/albums/${id}`, { method: 'DELETE' });
+
       setAlbums(albums.filter(a => a.id !== id));
       if (selectedAlbumId === id) setSelectedAlbumId(null);
     } catch (error) {
@@ -103,16 +118,20 @@ export default function Albums() {
   const toggleSelectAlbum = async (id) => {
     if (selectedAlbumId === id) {
       setSelectedAlbumId(null);
+      setPhotos([]);
+      setHasMorePhotos(true);
+      setPhotoPage(1);
     } else {
       setSelectedAlbumId(id);
-      setVisiblePhotoCount(10); // Reset pagination on open
       setIsAddingPhoto(false);
       setPhotos([]);
       setLoadingPhotos(true);
-      try {
-        const response = await fetch(`${API_URL}/albums/${id}/photos`);
+      try { 
+        const response = await fetch(`${API_URL}/photos?albumId=${id}&_page=1&_limit=10`);
         const data = await response.json();
         setPhotos(data);
+        setPhotoPage(1);
+        setHasMorePhotos(data.length === 10);
       } catch (error) {
         console.error('Error fetching photos:', error);
       } finally {
@@ -122,9 +141,24 @@ export default function Albums() {
   };
 
   // ----- PHOTO ACTIONS -----
-  const handleLoadMorePhotos = () => {
-    setVisiblePhotoCount(prev => prev + 10);
-  };
+  const handleLoadMorePhotos = async () => {
+  const nextPage = photoPage + 1;
+
+  try {
+    const response = await fetch(
+      `${API_URL}/photos?albumId=${selectedAlbumId}&_page=${nextPage}&_limit=10`
+    );
+
+    const data = await response.json();
+
+    setPhotos(prev => [...prev, ...data]);
+    setPhotoPage(nextPage);
+    setHasMorePhotos(data.length === 10);
+
+  } catch (error) {
+    console.error('Error loading more photos:', error);
+  }
+};
 
   const handleGenerateRandomUrls = () => {
     const rId = Math.floor(Math.random() * 1000);
@@ -200,7 +234,6 @@ export default function Albums() {
     return true;
   });
 
-  const visiblePhotos = photos.slice(0, visiblePhotoCount);
 
   if (loading) return <div className="text-center mt-2 text-muted">Loading Albums...</div>;
 
@@ -335,7 +368,7 @@ export default function Albums() {
                   ) : (
                     <>
                       <div className="photo-grid">
-                        {visiblePhotos.map(photo => {
+                        {photos.map(photo => {
                           const isEditingP = editingPhotoId === photo.id;
                           return (
                             <div key={photo.id} className="photo-card">
@@ -371,10 +404,10 @@ export default function Albums() {
                       
                       {/* PAGINATION / LOAD MORE */}
                       {photos.length === 0 && <div className="text-muted text-center mt-2">No photos in this album.</div>}
-                      {visiblePhotoCount < photos.length && (
+                      {hasMorePhotos && (
                         <div className="text-center mt-2 pt-2">
                           <button className="btn-outline" onClick={handleLoadMorePhotos} style={{ padding: '0.75rem 2rem' }}>
-                            Load More Photos ({photos.length - visiblePhotoCount} remaining)
+                            Load More Photos
                           </button>
                         </div>
                       )}

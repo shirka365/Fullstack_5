@@ -42,7 +42,7 @@ export default function Posts() {
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch(`${API_URL}/users/${userId}/posts`);
+      const response = await fetch(`${API_URL}/posts?userId=${userId}`);
       const data = await response.json();
       setPosts(data);
     } catch (error) {
@@ -78,14 +78,35 @@ export default function Posts() {
   };
 
   const handleDeletePost = async (id) => {
-    try {
-      await fetch(`${API_URL}/posts/${id}`, { method: 'DELETE' });
-      setPosts(posts.filter(p => p.id !== id));
-      if (selectedPostId === id) setSelectedPostId(null);
-    } catch (error) {
-      console.error('Error deleting post:', error);
+  try {
+
+    const commentsRes = await fetch(`${API_URL}/comments?postId=${id}`);
+    const postComments = await commentsRes.json();
+
+    await Promise.all(
+      postComments.map(comment =>
+        fetch(`${API_URL}/comments/${comment.id}`, {
+          method: 'DELETE'
+        })
+      )
+    );
+
+    await fetch(`${API_URL}/posts/${id}`, {
+      method: 'DELETE'
+    });
+
+    setPosts(posts.filter(p => p.id !== id));
+
+    if (selectedPostId === id) {
+      setSelectedPostId(null);
+      setComments([]);
+      setShowComments(false);
     }
-  };
+
+  } catch (error) {
+    console.error('Error deleting post:', error);
+  }
+};
 
   const startEditPost = (post) => {
     setEditingPostId(post.id);
@@ -113,6 +134,7 @@ export default function Posts() {
     if (selectedPostId === id) {
       setSelectedPostId(null);
       setShowComments(false);
+      setComments([]);
     } else {
       setSelectedPostId(id);
       setShowComments(false);
@@ -128,7 +150,7 @@ export default function Posts() {
     }
     setLoadingComments(true);
     try {
-      const response = await fetch(`${API_URL}/posts/${postId}/comments`);
+      const response = await fetch(`${API_URL}/comments?postId=${postId}`);
       const data = await response.json();
       setComments(data);
       setShowComments(true);
@@ -345,7 +367,7 @@ export default function Posts() {
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                         {comments.map(comment => {
-                          const isMyComment = comment.email === currentUser.email;
+                          const isMyComment = currentUser?.email && comment.email === currentUser.email;
                           const isEditingComment = editingCommentId === comment.id;
 
                           return (
