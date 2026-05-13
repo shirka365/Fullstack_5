@@ -83,13 +83,12 @@ export default function Posts() {
     const commentsRes = await fetch(`${API_URL}/comments?postId=${id}`);
     const postComments = await commentsRes.json();
 
-    await Promise.all(
-      postComments.map(comment =>
-        fetch(`${API_URL}/comments/${comment.id}`, {
-          method: 'DELETE'
-        })
-      )
-    );
+    for (const comment of postComments) {
+      try {
+        await fetch(`${API_URL}/comments/${comment.id}`, { method: 'DELETE' });
+        await new Promise(r => setTimeout(r, 20));
+      } catch (err) {}
+    }
 
     await fetch(`${API_URL}/posts/${id}`, {
       method: 'DELETE'

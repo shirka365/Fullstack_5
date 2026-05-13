@@ -61,6 +61,15 @@ body::after {
   100% { transform: scale(1.1) translate(2%, 2%); opacity: 1; }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-animation {
+  animation: spin 1s linear infinite;
+}
+
 /* Beautiful Soft Cards */
 .auth-card, .list-item, .info-item, .photo-card, .comment-card {
   background: #ffffff;

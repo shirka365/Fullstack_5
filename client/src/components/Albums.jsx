@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Plus, Trash2, Edit2, Save, X, Image as ImageIcon, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Image as ImageIcon, ChevronDown, ChevronRight, RefreshCw, Loader2 } from 'lucide-react';
 
 const API_URL = 'http://localhost:3001';
 
@@ -19,11 +19,12 @@ export default function Albums() {
   const [newAlbumTitle, setNewAlbumTitle] = useState('');
   const [editingAlbumId, setEditingAlbumId] = useState(null);
   const [editAlbumTitle, setEditAlbumTitle] = useState('');
+  const [deletingAlbumId, setDeletingAlbumId] = useState(null);
 
   // Selected Album & Photos
   const [selectedAlbumId, setSelectedAlbumId] = useState(null);
   const [photos, setPhotos] = useState([]);
-  const [allPhotos, setAllPhotos] = useState([]);
+  const [totalPhotoCount, setTotalPhotoCount] = useState(0);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [photoPage, setPhotoPage] = useState(1);
 
@@ -73,18 +74,24 @@ export default function Albums() {
   };
 
   const handleDeleteAlbum = async (id) => {
+    if (deletingAlbumId) return; // Prevent double clicks
+    
     try {
+      setDeletingAlbumId(id);
+      
       const photosRes = await fetch(`${API_URL}/photos?albumId=${id}`);
       const albumPhotos = await photosRes.json();
 
-      await Promise.all(
-        albumPhotos.map(photo =>
-          fetch(`${API_URL}/photos/${photo.id}`, {
-            method: 'DELETE'
-          })
-        )
-      );
-
+      // Delete sequentially to avoid json-server concurrent write crash
+      for (const photo of albumPhotos) {
+        try {
+          await fetch(`${API_URL}/photos/${photo.id}`, { method: 'DELETE' });
+          // Add a tiny 20ms delay to prevent Windows filesystem/antivirus file locks during rapid writes
+          await new Promise(r => setTimeout(r, 20));
+        } catch (err) {
+          // Ignore individual photo delete errors (like 404 if already deleted)
+        }
+      }
       
       await fetch(`${API_URL}/albums/${id}`, { method: 'DELETE' });
 
@@ -92,6 +99,8 @@ export default function Albums() {
       if (selectedAlbumId === id) setSelectedAlbumId(null);
     } catch (error) {
       console.error('Error deleting album:', error);
+    } finally {
+      setDeletingAlbumId(null);
     }
   };
 
@@ -117,52 +126,59 @@ export default function Albums() {
   };
 
   const toggleSelectAlbum = async (id) => {
-  const numericId = Number(id);
+    const numericId = Number(id);
 
-  if (selectedAlbumId === numericId) {
-    setSelectedAlbumId(null);
-    setPhotos([]);
-    setAllPhotos([]);
-    setHasMorePhotos(true);
-    setPhotoPage(1);
-  } else {
-    setSelectedAlbumId(numericId);
-    setIsAddingPhoto(false);
-    setPhotos([]);
-    setAllPhotos([]);
-    setLoadingPhotos(true);
-
-    try {
-      const response = await fetch(`${API_URL}/photos?albumId=${numericId}`);
-      const data = await response.json();
-
-      console.log("PHOTOS:", data);
-
-      setAllPhotos(data);
-
-      const firstPhotos = data.slice(0, 10);
-
-      setPhotos(firstPhotos);
+    if (selectedAlbumId === numericId) {
+      setSelectedAlbumId(null);
+      setPhotos([]);
+      setTotalPhotoCount(0);
+      setHasMorePhotos(true);
       setPhotoPage(1);
-      setHasMorePhotos(data.length > 10);
-    } catch (error) {
-      console.error('Error fetching photos:', error);
-    } finally {
-      setLoadingPhotos(false);
+    } else {
+      setSelectedAlbumId(numericId);
+      setIsAddingPhoto(false);
+      setPhotos([]);
+      setLoadingPhotos(true);
+
+      try {
+        const response = await fetch(`${API_URL}/photos?albumId=${numericId}&_page=1&_limit=10`);
+        
+        // json-server returns X-Total-Count header when using _page logic
+        const total = response.headers.get('X-Total-Count');
+        if (total) setTotalPhotoCount(parseInt(total, 10));
+        
+        const data = await response.json();
+        
+        // Fallback if header is missing
+        if (!total) setTotalPhotoCount(data.length);
+
+        setPhotos(data);
+        setPhotoPage(1);
+        setHasMorePhotos(data.length === 10 && (total ? parseInt(total, 10) > 10 : false));
+      } catch (error) {
+        console.error('Error fetching photos:', error);
+      } finally {
+        setLoadingPhotos(false);
+      }
     }
-  }
-};
+  };
 
   // ----- PHOTO ACTIONS -----
-  const handleLoadMorePhotos = () => {
-  const nextPage = photoPage + 1;
+  const handleLoadMorePhotos = async () => {
+    const nextPage = photoPage + 1;
 
-  const nextPhotos = allPhotos.slice(0, nextPage * 10);
+    try {
+      const response = await fetch(`${API_URL}/photos?albumId=${selectedAlbumId}&_page=${nextPage}&_limit=10`);
+      const data = await response.json();
 
-  setPhotos(nextPhotos);
-  setPhotoPage(nextPage);
-  setHasMorePhotos(nextPhotos.length < allPhotos.length);
-};
+      const newPhotos = [...photos, ...data];
+      setPhotos(newPhotos);
+      setPhotoPage(nextPage);
+      setHasMorePhotos(newPhotos.length < totalPhotoCount);
+    } catch (error) {
+      console.error('Error loading more photos:', error);
+    }
+  };
 
   const handleGenerateRandomUrls = () => {
     const rId = Math.floor(Math.random() * 1000);
@@ -187,6 +203,7 @@ export default function Albums() {
       });
       const newPhoto = await response.json();
       setPhotos([newPhoto, ...photos]);
+      setTotalPhotoCount(prev => prev + 1); // Update the total count dynamically
       setIsAddingPhoto(false);
       setNewPhotoTitle('');
       setNewPhotoUrl('');
@@ -200,6 +217,7 @@ export default function Albums() {
     try {
       await fetch(`${API_URL}/photos/${id}`, { method: 'DELETE' });
       setPhotos(photos.filter(p => p.id !== id));
+      setTotalPhotoCount(prev => prev - 1); // Update the total count dynamically
     } catch (error) {
       console.error('Error deleting photo:', error);
     }
@@ -291,12 +309,12 @@ export default function Albums() {
       {/* Album List Display */}
       <div className="list-container">
         {filteredAlbums.map(album => {
-          // const isSelected = selectedAlbumId === album.id;
           const isSelected = Number(selectedAlbumId) === Number(album.id);
           const isEditing = editingAlbumId === album.id;
+          const isDeleting = deletingAlbumId === album.id;
 
           return (
-            <div key={album.id} className={`list-item ${isSelected ? 'selected-post' : ''}`} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+            <div key={album.id} className={`list-item ${isSelected ? 'selected-post' : ''}`} style={{ flexDirection: 'column', alignItems: 'stretch', opacity: isDeleting ? 0.6 : 1 }}>
               
               {/* ALBUM SUMMARY */}
               <div className="flex-between">
@@ -329,9 +347,11 @@ export default function Albums() {
                   {isEditing ? (
                     <button className="icon-btn success" onClick={() => handleSaveEditAlbum(album)} title="Save"><Save size={18} /></button>
                   ) : (
-                    <button className="icon-btn" onClick={() => startEditAlbum(album)} title="Edit"><Edit2 size={18} /></button>
+                    <button className="icon-btn" onClick={() => startEditAlbum(album)} title="Edit" disabled={isDeleting}><Edit2 size={18} /></button>
                   )}
-                  <button className="icon-btn danger" onClick={() => handleDeleteAlbum(album.id)} title="Delete"><Trash2 size={18} /></button>
+                  <button className="icon-btn danger" onClick={() => handleDeleteAlbum(album.id)} title="Delete" disabled={isDeleting}>
+                    {isDeleting ? <Loader2 size={18} className="spin-animation" /> : <Trash2 size={18} />}
+                  </button>
                 </div>
               </div>
 
@@ -340,7 +360,7 @@ export default function Albums() {
                 <div className="mt-2 pt-2 border-t">
                   
                   <div className="flex-between mb-2">
-                    <h4 style={{ color: 'var(--text-muted)' }}>{photos.length} Photos</h4>
+                    <h4 style={{ color: 'var(--text-muted)' }}>{totalPhotoCount} Photos</h4>
                     <button className="btn-outline" onClick={() => setIsAddingPhoto(!isAddingPhoto)}>
                       {isAddingPhoto ? 'Cancel' : 'Add Photo'}
                     </button>
@@ -408,7 +428,7 @@ export default function Albums() {
                       </div>
                       
                       {/* PAGINATION / LOAD MORE */}
-                      {photos.length === 0 && <div className="text-muted text-center mt-2">No photos in this album.</div>}
+                      {totalPhotoCount === 0 && <div className="text-muted text-center mt-2">No photos in this album.</div>}
                       {hasMorePhotos && (
                         <div className="text-center mt-2 pt-2">
                           <button className="btn-outline" onClick={handleLoadMorePhotos} style={{ padding: '0.75rem 2rem' }}>
