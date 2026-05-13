@@ -27,7 +27,7 @@ export default function Todos() {
 
   const fetchTodos = async () => {
     try {
-      const response = await fetch(`${API_URL}/users/${userId}/todos`);
+      const response = await fetch(  `${API_URL}/todos?userId=${userId}`);
       const data = await response.json();
       setTodos(data);
     } catch (error) {
