@@ -34,9 +34,8 @@ export default function Login() {
 
       // 3. Success: Save user in localStorage
       localStorage.setItem('currentUser', JSON.stringify(user));
-      
-      // 4. Navigate to the user's home page
-      navigate(`/users/${user.id}/home`);
+
+      navigate(`/users/${user.id}/info`);
     } catch (err) {
       setError('Server error. Make sure your json-server is running.');
     }
@@ -49,23 +48,23 @@ export default function Login() {
         <form onSubmit={handleLogin}>
           <div className="form-group">
             <label>Username</label>
-            <input 
-              type="text" 
-              className="form-control" 
-              value={username} 
-              onChange={(e) => setUsername(e.target.value)} 
-              required 
+            <input
+              type="text"
+              className="form-control"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
               placeholder="e.g. Bret"
             />
           </div>
           <div className="form-group">
             <label>Password (Website)</label>
-            <input 
-              type="password" 
-              className="form-control" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              required 
+            <input
+              type="password"
+              className="form-control"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
               placeholder="e.g. hildegard.org"
             />
           </div>

@@ -8,7 +8,7 @@ function RootRedirect() {
 
   if (currentUser) {
     const user = JSON.parse(currentUser);
-    return <Navigate to={`/users/${user.id}`} replace />;
+    return <Navigate to={`/users/${user.id}/info`} replace />;
   }
 
   return <Navigate to="/login" replace />;

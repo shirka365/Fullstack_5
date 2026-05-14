@@ -343,7 +343,7 @@ export default function Posts() {
               {/* EXPANDED CONTENT (Reading) */}
               {isSelected && !isEditing && (
                 <div className="post-content mt-2 pt-2 border-t">
-                  <p className="text-body" style={{ lineHeight: '1.6', color: '#e2e8f0', marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem' }}>
+                  <p className="text-body" style={{ lineHeight: '1.6', color: 'var(--text-main)', marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '0.5rem' }}>
                     {post.body}
                   </p>
                   
@@ -370,7 +370,7 @@ export default function Posts() {
                           const isEditingComment = editingCommentId === comment.id;
 
                           return (
-                            <div key={comment.id} className="comment-card" style={{ padding: '0.75rem', backgroundColor: 'rgba(15, 23, 42, 0.4)', borderRadius: '0.5rem' }}>
+                            <div key={comment.id} className="comment-card" style={{ padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '0.5rem', border: '1px solid var(--border)' }}>
                               <div className="flex-between mb-1">
                                 <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--primary)' }}>{comment.name} ({comment.email})</span>
                                 {isMyComment && (
@@ -394,7 +394,7 @@ export default function Posts() {
                                   style={{ marginTop: '0.5rem', fontSize: '0.875rem', resize: 'vertical' }}
                                 />
                               ) : (
-                                <p style={{ fontSize: '0.875rem', color: '#cbd5e1' }}>{comment.body}</p>
+                                <p style={{ fontSize: '0.875rem', color: 'var(--text-main)' }}>{comment.body}</p>
                               )}
                             </div>
                           );

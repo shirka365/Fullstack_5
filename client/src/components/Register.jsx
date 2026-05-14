@@ -6,16 +6,16 @@ const API_URL = 'http://localhost:3001';
 
 export default function Register() {
   const [step, setStep] = useState(1);
-  
+
   // Step 1 states
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [verifyPassword, setVerifyPassword] = useState('');
-  
+
   // Step 2 states
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  
+
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -69,7 +69,7 @@ export default function Register() {
       // Automatically log them in
       localStorage.setItem('currentUser', JSON.stringify(createdUser));
       navigate(`/users/${createdUser.id}/info`);
-      
+
     } catch (err) {
       setError('Error creating user.');
     }
@@ -79,7 +79,7 @@ export default function Register() {
     <div className="auth-container">
       <div className="auth-card">
         <h2 className="auth-title">Create Account (Step {step}/2)</h2>
-        
+
         {step === 1 ? (
           <form onSubmit={handleStepOne}>
             <div className="form-group">

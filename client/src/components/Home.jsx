@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Routes, Route, Link, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, Routes, Route, Link, useParams, useLocation, Navigate } from 'react-router-dom';
 import { Info, CheckSquare, FileText, Image as ImageIcon, LogOut, User } from 'lucide-react';
 import Todos from './Todos';
 import Posts from './Posts';
@@ -78,6 +78,7 @@ export default function Home() {
       <main className="main-content">
         {/* Nested routes for the specific tabs */}
         <Routes>
+          <Route index element={<Navigate to="info" replace />} />
           <Route path="info" element={
             <div>
               <h2 className="page-title">Personal Information</h2>
